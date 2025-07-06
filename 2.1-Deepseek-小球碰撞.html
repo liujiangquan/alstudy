@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>弹跳小球：三角形边界碰撞模拟</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            color: #fff;
+            overflow-x: hidden;
+        }
+        
+        header {
+            text-align: center;
+            margin: 20px 0 30px;
+            max-width: 800px;
+        }
+        
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+            background: linear-gradient(to right, #ff7e5f, #feb47b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 2px 10px rgba(255, 126, 95, 0.3);
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            color: #a0d2eb;
+            margin-bottom: 15px;
+        }
+        
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 30px;
+            max-width: 1200px;
+            width: 100%;
+        }
+        
+        .simulation-container {
+            flex: 1;
+            min-width: 500px;
+            background: rgba(25, 42, 56, 0.7);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .canvas-wrapper {
+            position: relative;
+            width: 100%;
+            height: 500px;
+            background: rgba(10, 20, 30, 0.6);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        #simulationCanvas {
+            background: rgba(15, 30, 45, 0.8);
+            width: 100%;
+            height: 100%;
+        }
+        
+        .controls {
+            flex: 0 0 300px;
+            background: rgba(25, 42, 56, 0.7);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .control-group {
+            margin-bottom: 25px;
+        }
+        
+        h2 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: #feb47b;
+            display: flex;
+            align-items: center;
+        }
+        
+        h2 i {
+            margin-right: 10px;
+            font-size: 1.3rem;
+        }
+        
+        .slider-container {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #a0d2eb;
+            font-weight: 500;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            background: rgba(160, 210, 235, 0.2);
+            border-radius: 10px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 22px;
+            height: 22px;
+            background: #ff7e5f;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(255, 126, 95, 0.6);
+        }
+        
+        .value-display {
+            display: inline-block;
+            width: 40px;
+            text-align: right;
+            font-weight: bold;
+            color: #feb47b;
+        }
+        
+        .buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        button {
+            flex: 1;
+            padding: 12px 15px;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(to right, #ff7e5f, #feb47b);
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255, 126, 95, 0.4);
+        }
+        
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(255, 126, 95, 0.6);
+        }
+        
+        button:active {
+            transform: translateY(1px);
+        }
+        
+        button.reset {
+            background: linear-gradient(to right, #4b79a1, #283e51);
+        }
+        
+        .info-panel {
+            background: rgba(15, 30, 45, 0.8);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .info-panel h3 {
+            color: #feb47b;
+            margin-bottom: 10px;
+        }
+        
+        .info-panel ul {
+            padding-left: 20px;
+        }
+        
+        .info-panel li {
+            margin-bottom: 8px;
+        }
+        
+        .highlight {
+            color: #ff7e5f;
+            font-weight: bold;
+        }
+        
+        @media (max-width: 900px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .simulation-container, .controls {
+                min-width: 100%;
+            }
+            
+            .canvas-wrapper {
+                height: 400px;
+            }
+        }
+        
+        .particle {
+            position: absolute;
+            background: rgba(255, 126, 95, 0.7);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>弹跳小球：三角形边界碰撞模拟</h1>
+        <p class="subtitle">观察小球在三角形区域内运动并遵循物理定律反弹的模拟实验</p>
+    </header>
+    
+    <div class="container">
+        <div class="simulation-container">
+            <div class="canvas-wrapper">
+                <canvas id="simulationCanvas"></canvas>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <h2><i>⚙️</i> 模拟控制</h2>
+                
+                <div class="slider-container">
+                    <label>小球速度: <span id="speedValue" class="value-display">5</span></label>
+                    <input type="range" id="speedSlider" min="1" max="15" value="5">
+                </div>
+                
+                <div class="slider-container">
+                    <label>小球大小: <span id="sizeValue" class="value-display">15</span></label>
+                    <input type="range" id="sizeSlider" min="5" max="30" value="15">
+                </div>
+                
+                <div class="slider-container">
+                    <label>三角形大小: <span id="triangleValue" class="value-display">300</span></label>
+                    <input type="range" id="triangleSlider" min="200" max="400" value="300">
+                </div>
+                
+                <div class="slider-container">
+                    <label>反弹效果: <span id="bounceValue" class="value-display">0.9</span></label>
+                    <input type="range" id="bounceSlider" min="5" max="10" value="9">
+                </div>
+                
+                <div class="buttons">
+                    <button id="startBtn">开始模拟</button>
+                    <button id="pauseBtn">暂停</button>
+                    <button class="reset" id="resetBtn">重置</button>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <h2><i>ℹ️</i> 物理原理</h2>
+                <div class="info-panel">
+                    <h3>碰撞物理原理</h3>
+                    <ul>
+                        <li>当小球碰撞边界时，遵循<span class="highlight">反射定律</span>：入射角等于反射角</li>
+                        <li>碰撞后小球的速度方向改变，但大小按比例减小（系数可调整）</li>
+                        <li>碰撞检测通过计算小球与三角形各边的距离实现</li>
+                        <li>使用<span class="highlight">向量数学</span>计算反弹方向</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 获取Canvas元素和上下文
+        const canvas = document.getElementById('simulationCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // 调整Canvas大小以匹配容器
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+        }
+        
+        // 初始调整大小
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        
+        // 模拟变量
+        let animationId = null;
+        let isRunning = false;
+        let particles = [];
+        
+        // 小球属性
+        let ball = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            radius: 15,
+            vx: 3,
+            vy: 4,
+            color: '#ff6b6b'
+        };
+        
+        // 三角形属性
+        let triangleSize = 300;
+        let trianglePoints = [];
+        let bounceFactor = 0.9;
+        
+        // 更新三角形顶点
+        function updateTriangle() {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const height = (Math.sqrt(3) / 2) * triangleSize;
+            
+            trianglePoints = [
+                { x: centerX, y: centerY - height / 1.5 },           // 顶点
+                { x: centerX - triangleSize / 2, y: centerY + height / 3 },  // 左下角
+                { x: centerX + triangleSize / 2, y: centerY + height / 3 }   // 右下角
+            ];
+        }
+        
+        // 计算点到线段的距离
+        function pointToLineDistance(point, lineStart, lineEnd) {
+            const A = point.x - lineStart.x;
+            const B = point.y - lineStart.y;
+            const C = lineEnd.x - lineStart.x;
+            const D = lineEnd.y - lineStart.y;
+            
+            const dot = A * C + B * D;
+            const lenSq = C * C + D * D;
+            let param = -1;
+            
+            if (lenSq !== 0) {
+                param = dot / lenSq;
+            }
+            
+            let xx, yy;
+            
+            if (param < 0) {
+                xx = lineStart.x;
+                yy = lineStart.y;
+            } else if (param > 1) {
+                xx = lineEnd.x;
+                yy = lineEnd.y;
+            } else {
+                xx = lineStart.x + param * C;
+                yy = lineStart.y + param * D;
+            }
+            
+            const dx = point.x - xx;
+            const dy = point.y - yy;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+        
+        // 计算法向量
+        function calculateNormal(p1, p2) {
+            const dx = p2.x - p1.x;
+            const dy = p2.y - p1.y;
+            const length = Math.sqrt(dx * dx + dy * dy);
+            
+            // 返回单位法向量（垂直于线段）
+            return {
+                x: -dy / length,
+                y: dx / length
+            };
+        }
+        
+        // 处理小球与边界的碰撞
+        function handleBoundaryCollision() {
+            for (let i = 0; i < 3; i++) {
+                const p1 = trianglePoints[i];
+                const p2 = trianglePoints[(i + 1) % 3];
+                
+                const distance = pointToLineDistance(ball, p1, p2);
+                
+                // 检测碰撞
+                if (distance <= ball.radius) {
+                    // 计算法向量
+                    const normal = calculateNormal(p1, p2);
+                    
+                    // 计算入射速度在法向量上的投影
+                    const dotProduct = ball.vx * normal.x + ball.vy * normal.y;
+                    
+                    // 反射计算
+                    ball.vx = ball.vx - 2 * dotProduct * normal.x;
+                    ball.vy = ball.vy - 2 * dotProduct * normal.y;
+                    
+                    // 应用反弹系数
+                    ball.vx *= bounceFactor;
+                    ball.vy *= bounceFactor;
+                    
+                    // 添加粒子效果
+                    createParticles(ball.x, ball.y, 8);
+                    
+                    // 稍微移动球以防止卡在边界
+                    ball.x += ball.vx * 0.1;
+                    ball.y += ball.vy * 0.1;
+                    
+                    break;
+                }
+            }
+        }
+        
+        // 创建粒子效果
+        function createParticles(x, y, count) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    size: Math.random() * 3 + 1,
+                    vx: (Math.random() - 0.5) * 6,
+                    vy: (Math.random() - 0.5) * 6,
+                    life: 30,
+                    color: `rgba(255, ${100 + Math.floor(Math.random() * 100)}, ${Math.floor(Math.random() * 100)}, 1)`
+                });
+            }
+        }
+        
+        // 更新粒子
+        function updateParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life--;
+                
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+        }
+        
+        // 绘制粒子
+        function drawParticles() {
+            for (const p of particles) {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fillStyle = p.color;
+                ctx.fill();
+            }
+        }
+        
+        // 绘制三角形
+        function drawTriangle() {
+            ctx.beginPath();
+            ctx.moveTo(trianglePoints[0].x, trianglePoints[0].y);
+            ctx.lineTo(trianglePoints[1].x, trianglePoints[1].y);
+            ctx.lineTo(trianglePoints[2].x, trianglePoints[2].y);
+            ctx.closePath();
+            
+            // 三角形边框
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#4eb1cb';
+            ctx.stroke();
+            
+            // 半透明填充
+            ctx.fillStyle = 'rgba(78, 177, 203, 0.1)';
+            ctx.fill();
+        }
+        
+        // 绘制小球
+        function drawBall() {
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+            
+            // 创建发光效果
+            const gradient = ctx.createRadialGradient(
+                ball.x, ball.y, 0,
+                ball.x, ball.y, ball.radius
+            );
+            gradient.addColorStop(0, '#fff');
+            gradient.addColorStop(0.7, ball.color);
+            gradient.addColorStop(1, '#d64045');
+            
+            ctx.fillStyle = gradient;
+            ctx.fill();
+            
+            // 添加高光
+            ctx.beginPath();
+            ctx.arc(ball.x - ball.radius/3, ball.y - ball.radius/3, ball.radius/4, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.fill();
+        }
+        
+        // 更新小球位置
+        function updateBall() {
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+            
+            // 处理边界碰撞
+            handleBoundaryCollision();
+        }
+        
+        // 动画循环
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 更新三角形位置
+            updateTriangle();
+            
+            // 绘制三角形
+            drawTriangle();
+            
+            // 更新并绘制粒子
+            updateParticles();
+            drawParticles();
+            
+            // 更新并绘制小球
+            updateBall();
+            drawBall();
+            
+            animationId = requestAnimationFrame(animate);
+        }
+        
+        // 重置模拟
+        function resetSimulation() {
+            ball.x = canvas.width / 2;
+            ball.y = canvas.height / 2;
+            
+            // 随机初始方向
+            const angle = Math.random() * Math.PI * 2;
+            const speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
+            ball.vx = Math.cos(angle) * speed;
+            ball.vy = Math.sin(angle) * speed;
+            
+            particles = [];
+        }
+        
+        // 事件监听器
+        document.getElementById('startBtn').addEventListener('click', function() {
+            if (!isRunning) {
+                isRunning = true;
+                animate();
+            }
+        });
+        
+        document.getElementById('pauseBtn').addEventListener('click', function() {
+            if (isRunning) {
+                isRunning = false;
+                cancelAnimationFrame(animationId);
+            }
+        });
+        
+        document.getElementById('resetBtn').addEventListener('click', resetSimulation);
+        
+        // 滑块控制
+        document.getElementById('speedSlider').addEventListener('input', function() {
+            const value = this.value;
+            document.getElementById('speedValue').textContent = value;
+            
+            // 保持当前方向，更新速度大小
+            const speed = parseFloat(value);
+            const currentSpeed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
+            const ratio = speed / currentSpeed;
+            
+            ball.vx *= ratio;
+            ball.vy *= ratio;
+        });
+        
+        document.getElementById('sizeSlider').addEventListener('input', function() {
+            const value = this.value;
+            document.getElementById('sizeValue').textContent = value;
+            ball.radius = parseInt(value);
+        });
+        
+        document.getElementById('triangleSlider').addEventListener('input', function() {
+            const value = this.value;
+            document.getElementById('triangleValue').textContent = value;
+            triangleSize = parseInt(value);
+        });
+        
+        document.getElementById('bounceSlider').addEventListener('input', function() {
+            const value = this.value / 10;
+            document.getElementById('bounceValue').textContent = value.toFixed(1);
+            bounceFactor = value;
+        });
+        
+        // 初始化
+        updateTriangle();
+        resetSimulation();
+        animate();
+    </script>
+</body>
+</html>
